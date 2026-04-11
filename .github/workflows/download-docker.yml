@@ -1,0 +1,31 @@
+name: Docker Image Downloader
+
+on:
+  workflow_dispatch: # این خط اجازه می‌دهد به صورت دستی دکمه اجرا را بزنید
+    inputs:
+      image_name:
+        description: 'ghcr.io/leshchenko1979/fast-mcp-telegram:sha-10916d6'
+        required: true
+        default: ''
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull Docker Image
+        run: |
+          docker pull ${{ github.event.inputs.image_name }}
+
+      - name: Save Docker Image to Tar
+        run: |
+          # تبدیل نام ایمیج به یک نام فایل معتبر (حذف کاراکترهای غیرمجاز)
+          FILENAME=$(echo "${{ github.event.inputs.image_name }}" | sed 's/[\/:]/_/g').tar
+          docker save ${{ github.event.inputs.image_name }} -o $FILENAME
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-package
+          path: ${{ env.FILENAME }}
+          retention-days: 1 # فایل فقط یک روز بماند (برای صرفه‌جویی در فضا)
