@@ -1,0 +1,41 @@
+name: Docker Image to Source
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: 'Docker Image Name (e.g., ghcr.io/user/repo:tag)'
+        required: true
+
+permissions:
+  contents: write # اجازه دادن به Action برای پوش کردن کد
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Pull and Save Docker Image
+        run: |
+          docker pull ${{ github.event.inputs.image_name }}
+          # تبدیل نام ایمیج به نام فایل
+          SAFE_NAME=$(echo "${{ github.event.inputs.image_name }}" | sed 's/[\/:]/_/g')
+          docker save ${{ github.event.inputs.image_name }} -o image.tar
+          
+          # ساخت یک پوشه برای تمیز ماندن ریپازیتوری
+          mkdir -p "downloads/$SAFE_NAME"
+          
+          # تقسیم فایل به قطعات 50 مگابایتی (برای دور زدن محدودیت 100 مگابایتی گیت‌هاب)
+          split -b 50M image.tar "downloads/$SAFE_NAME/part_"
+          
+          echo "DIR_NAME=downloads/$SAFE_NAME" >> $GITHUB_ENV
+
+      - name: Commit and Push to Source
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Add Docker image: ${{ github.event.inputs.image_name }}"
+          git push
