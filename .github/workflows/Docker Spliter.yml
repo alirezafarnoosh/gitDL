@@ -1,4 +1,4 @@
-name: Docker Image to Source
+name: Docker Image to Source (Compressed)
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
         required: true
 
 permissions:
-  contents: write # دسترسی لازم برای آپلود فایل‌ها به مخزن
+  contents: write
 
 jobs:
   build-and-push:
@@ -17,7 +17,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Pull and Save Docker Image
+      - name: Pull, Save and Compress
         run: |
           # 1. دانلود ایمیج
           docker pull ${{ github.event.inputs.image_name }}
@@ -25,17 +25,17 @@ jobs:
           # 2. تمیز کردن نام برای ساخت پوشه
           SAFE_NAME=$(echo "${{ github.event.inputs.image_name }}" | sed 's/[\/:]/_/g')
           
-          # 3. ذخیره در یک فایل موقت
-          docker save ${{ github.event.inputs.image_name }} -o image.tar
+          # 3. ذخیره و فشرده‌سازی با حداکثر توان (فایل نهایی خیلی کوچکتر می‌شود)
+          docker save ${{ github.event.inputs.image_name }} | gzip > image.tar.gz
           
           # 4. ساخت پوشه مقصد
           mkdir -p "downloads/$SAFE_NAME"
           
-          # 5. تکه تکه کردن فایل به پارت‌های 50 مگابایتی
-          split -b 50M image.tar "downloads/$SAFE_NAME/part_"
+          # 5. تکه تکه کردن فایل فشرده به پارت‌های 50 مگابایتی
+          split -b 50M image.tar.gz "downloads/$SAFE_NAME/part_"
           
-          # 6. حذف فایل اصلی (بسیار مهم برای جلوگیری از ارور حجم گیت‌هاب)
-          rm image.tar
+          # 6. حذف فایل اصلی فشرده شده (حیاتی برای جلوگیری از ارور حجم گیت‌هاب)
+          rm image.tar.gz
           
           echo "DIR_NAME=downloads/$SAFE_NAME" >> $GITHUB_ENV
 
@@ -44,13 +44,13 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # اضافه کردن فقط پارت‌های جدید به گیت
+          # فقط پوشه دانلودها را اضافه کن
           git add downloads/
           
-          # بررسی اینکه آیا تغییری برای کامیت هست یا نه
+          # بررسی برای جلوگیری از ارور در صورت نبود تغییر
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Add Docker image: ${{ github.event.inputs.image_name }}"
+            git commit -m "Add compressed Docker image: ${{ github.event.inputs.image_name }}"
             git push
           fi
