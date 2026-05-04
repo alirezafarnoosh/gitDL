@@ -1,0 +1,55 @@
+name: Universal File Downloader & Splitter
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_url:
+        description: 'لینک مستقیم فایل مورد نظر'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  download-and-split:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download and Process File
+        run: |
+          # 1. استخراج نام فایل از URL و تمیزکاری آن
+          URL="${{ github.event.inputs.file_url }}"
+          RAW_FILENAME=$(basename "$URL" | cut -d? -f1) # حذف پارامترهای بعد از ? در لینک
+          SAFE_NAME=$(echo "$RAW_FILENAME" | sed 's/[^a-zA-Z0-9._-]/_/g')
+          
+          echo "Downloading: $RAW_FILENAME"
+          
+          # 2. دانلود فایل با wget
+          wget -q "$URL" -O "$SAFE_NAME"
+          
+          # 3. ساخت پوشه مقصد
+          mkdir -p "downloads/$SAFE_NAME"
+          
+          # 4. تکه تکه کردن به پارت‌های 50 مگابایتی
+          split -b 50M "$SAFE_NAME" "downloads/$SAFE_NAME/part_"
+          
+          # 5. حذف فایل اصلی برای جلوگیری از ارور حجم گیت‌هاب
+          rm "$SAFE_NAME"
+          
+          echo "SAFE_NAME=$SAFE_NAME" >> $GITHUB_ENV
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add downloads/
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add split file: ${{ env.SAFE_NAME }}"
+            git push
+          fi
