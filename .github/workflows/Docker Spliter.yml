@@ -54,3 +54,4 @@ jobs:
             git commit -m "Add compressed Docker image: ${{ github.event.inputs.image_name }}"
             git push
           fi
+#cat part_* > sql19.tar.gz  
