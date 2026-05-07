@@ -1,0 +1,59 @@
+name: Universal File Downloader, Compressor & Splitter (Numeric)
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_url:
+        description: 'لینک مستقیم فایل مورد نظر'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  download-process-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download, Gzip and Split
+        run: |
+          # 1. استخراج نام و آماده‌سازی
+          URL="${{ github.event.inputs.file_url }}"
+          RAW_FILENAME=$(basename "$URL" | cut -d? -f1)
+          SAFE_NAME=$(echo "$RAW_FILENAME" | sed 's/[^a-zA-Z0-9._-]/_/g')
+          
+          echo "Processing: $SAFE_NAME"
+          
+          # 2. دانلود فایل از اینترنت
+          wget -q "$URL" -O "$SAFE_NAME"
+          
+          # 3. فشرده‌سازی با Gzip
+          gzip "$SAFE_NAME"
+          
+          # 4. ساخت پوشه مقصد در مخزن
+          mkdir -p "downloads/$SAFE_NAME"
+          
+          # 5. تقسیم فایل فشرده به پارت‌های 50 مگابایتی با پسوند عددی
+          # 🔴 پارامتر -d اضافه شد تا پسوندها 00, 01, 02 بشوند
+          split -b 50M -d "$SAFE_NAME.gz" "downloads/$SAFE_NAME/part_"
+          
+          # 6. پاکسازی فایل حجیم قبل از پوش کردن به گیت
+          rm "$SAFE_NAME.gz"
+          
+          echo "SAFE_NAME=$SAFE_NAME" >> $GITHUB_ENV
+
+      - name: Commit and Push to Source
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add downloads/
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add compressed split file (numeric): ${{ env.SAFE_NAME }}"
+            git push
+          fi
