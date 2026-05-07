@@ -32,7 +32,7 @@ jobs:
           mkdir -p "downloads/$SAFE_NAME"
           
           # 5. تکه تکه کردن فایل فشرده به پارت‌های 50 مگابایتی
-          split -b 50M image.tar.gz "downloads/$SAFE_NAME/part_"
+          split -b 50M -d image.tar.gz "downloads/$SAFE_NAME/part_"
           
           # 6. حذف فایل اصلی فشرده شده (حیاتی برای جلوگیری از ارور حجم گیت‌هاب)
           rm image.tar.gz
