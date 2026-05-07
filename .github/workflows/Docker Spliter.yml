@@ -55,3 +55,4 @@ jobs:
             git push
           fi
           #cat part_* > sql19.tar.gz  
+          #copy /b .\part_a* portainer.gzip
