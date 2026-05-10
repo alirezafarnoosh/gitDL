@@ -1,4 +1,4 @@
-name: Universal File Downloader & Splitter -numeric
+name: Universal File Downloader & Splitter (Numeric)
 
 on:
   workflow_dispatch:
