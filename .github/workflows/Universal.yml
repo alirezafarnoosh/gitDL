@@ -33,7 +33,7 @@ jobs:
           mkdir -p "downloads/$SAFE_NAME"
           
           # 4. تکه تکه کردن به پارت‌های 50 مگابایتی
-          split -b 50M -d "$SAFE_NAME" "downloads/$SAFE_NAME/$SAFE_NAME_"
+          split -b 50M -d "$SAFE_NAME" "downloads/$SAFE_NAME/$SAFE_NAME"
           
           # 5. حذف فایل اصلی برای جلوگیری از ارور حجم گیت‌هاب
           rm "$SAFE_NAME"
